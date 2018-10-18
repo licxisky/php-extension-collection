@@ -70,16 +70,43 @@ ZEND_TSRMLS_CACHE_EXTERN()
  * vim<600: noet sw=4 ts=4
  */
 
-#define COLLECTION_RETURN_THIS() RETURN_ZVAL(getThis(), 1, 0)
-#define COLLECTION_GET_PROPERTY(name, len) zend_read_property(collection_ce, getThis(), name, len, 0 TSRMLS_DC, NULL)
-#define RETURN_NULL_OR_DELAULT(def) if(def == NULL) { RETURN_NULL(); } else { RETURN_ZVAL(def, 0, 0); } 
+#define COLLECTION_RETURN_THIS() \
+        RETURN_ZVAL(getThis(), 1, 0)
+
+#define COLLECTION_RETURN_NEW(data) do { \
+        zval function_name;         \
+        zval args[1];               \
+        zval retval;                \
+        object_init_ex(return_value, collection_ce);  \
+        ZVAL_STRING(&function_name, "__construct");   \
+        args[0] = *data;            \
+        call_user_function_ex(EG(function_table), return_value, &function_name, &retval, 1, args, 0, NULL); \
+        } while (0) 
+
+
+#define COLLECTION_GET_PROPERTY(name, len) \
+        zend_read_property(collection_ce, getThis(), name, len, 0 TSRMLS_DC, NULL)
+
+#define COLLECTION_SET_PROPERTY(name, len, data) \
+        zend_update_property(collection_ce, getThis(), name, len, data TSRMLS_CC)
+
+#define COLLECTION_GET_PROPERTY_DATA() \
+        COLLECTION_GET_PROPERTY("data", sizeof("data") - 1)
+
+#define COLLECTION_SET_PROPERTY_DATA(data) \
+        COLLECTION_SET_PROPERTY("data", sizeof("data") - 1, data)
+
+#define RETURN_NULL_OR_DELAULT(def) \
+        if(def == NULL) { RETURN_NULL(); } \
+        else { RETURN_ZVAL(def, 0, 0); } 
 
 #define STRING_SPLIT_WHILE_START(key, sk, tl, kl, ex) do { \
     sk = strtok(Z_STRVAL_P(key), ex);                 \
     kl = Z_STRLEN_P(key);                             \
     tl = 0;                                           \
     while(sk != NULL) {          \
-      tl += (strlen(sk) + 1);                         
+      tl += (strlen(sk) + 1);   
+
 #define STRING_SPLIT_WHILE_END(sk, ex) \
       sk = strtok(NULL, ex); \
     } \

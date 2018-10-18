@@ -6302,7 +6302,7 @@ PHP_FUNCTION(array_chunk)
 }
 /* }}} */
 
-/* {{{ proto array array_combine(array keys, array values)
+/* {{{ proto array array_`bine(array keys, array values)
    Creates an array by using the elements of the first parameter as keys and the elements of the second as the corresponding values */
 PHP_FUNCTION(array_combine)
 {

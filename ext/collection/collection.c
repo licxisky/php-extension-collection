@@ -25,6 +25,8 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
+#include "ext/standard/php_string.h"
+
 #include "php_collection.h"
 
 #include "zend_interfaces.h"
@@ -90,9 +92,6 @@ ZEND_END_ARG_INFO()
 ZEND_METHOD(collection, make)
 {
 	zval *data;
-	zval function_name;
-	zval args[1];
-    zval retval;
 
     array_init(data);
 
@@ -101,13 +100,7 @@ ZEND_METHOD(collection, make)
 		Z_PARAM_ARRAY(data)
 	ZEND_PARSE_PARAMETERS_END();
 
-    object_init_ex(return_value, collection_ce);
-
-	ZVAL_STRING(&function_name, "__construct");
-
-	args[0] = *data;
-
-	call_user_function_ex(EG(function_table), return_value, &function_name, &retval, 1, args, 0, NULL);
+    COLLECTION_RETURN_NEW(data);
 }
 
 ZEND_METHOD(collection, __construct)
@@ -119,7 +112,7 @@ ZEND_METHOD(collection, __construct)
 		Z_PARAM_ARRAY(data)
 	ZEND_PARSE_PARAMETERS_END();
 
-	zend_update_property(collection_ce, getThis(), "data", sizeof("data") - 1, data TSRMLS_CC);
+	COLLECTION_SET_PROPERTY_DATA(data);
 }
 
 ZEND_METHOD(collection, get)
@@ -127,7 +120,7 @@ ZEND_METHOD(collection, get)
 	zval *data;
 	zval *key = NULL;
 	zval *def = NULL;
-	zend_bool dot = 1; 
+	zend_bool dot = 1;
 	zval *entry;
 	char * sk;
 
@@ -138,7 +131,7 @@ ZEND_METHOD(collection, get)
 		Z_PARAM_BOOL(dot)
 	ZEND_PARSE_PARAMETERS_END();
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	if(key == NULL) {
 		ZVAL_DEREF(data);
@@ -193,7 +186,7 @@ ZEND_METHOD(collection, groupBy)
 		Z_PARAM_BOOL(preserve_key)
 	ZEND_PARSE_PARAMETERS_END();
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	zval result;
 
@@ -206,9 +199,6 @@ ZEND_METHOD(collection, groupBy)
 		case IS_STRING:
 		case IS_DOUBLE:
 			group_by_key(Z_ARRVAL(result), group_by, Z_ARRVAL_P(data));
-			break;
-		case IS_ARRAY:
-			group_by_array(Z_ARRVAL(result), Z_ARRVAL_P(group_by));
 			break;
 
 	}
@@ -226,7 +216,7 @@ ZEND_METHOD(collection, count)
 {
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	RETURN_LONG(zend_hash_num_elements(Z_ARRVAL_P(data)));
 }
@@ -237,7 +227,7 @@ ZEND_METHOD(collection, offsetSet)
 	zval *value;
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	ZEND_PARSE_PARAMETERS_START(2, 2)
 		Z_PARAM_ZVAL(offset)
@@ -260,7 +250,7 @@ ZEND_METHOD(collection, offsetGet)
 	zval *data;
 	zval *entry = NULL;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 	
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_ZVAL(offset)
@@ -280,7 +270,7 @@ ZEND_METHOD(collection, offsetUnset)
 	zval *offset;
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_ZVAL(offset)
@@ -294,7 +284,7 @@ ZEND_METHOD(collection, offsetExists)
 	zval *offset;
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_ZVAL(offset)
@@ -308,7 +298,7 @@ ZEND_METHOD(collection, current)
 	zval *data;
 	zval *entry;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	if ((entry = zend_hash_get_current_data(Z_ARRVAL_P(data))) == NULL) {
 		RETURN_FALSE;
@@ -326,7 +316,7 @@ ZEND_METHOD(collection, key)
 {
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	zend_hash_get_current_key_zval(Z_ARRVAL_P(data), return_value);
 }
@@ -335,7 +325,7 @@ ZEND_METHOD(collection, next)
 {
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	zend_hash_move_forward(Z_ARRVAL_P(data));
 }
@@ -344,7 +334,7 @@ ZEND_METHOD(collection, rewind)
 {
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 
 	zend_hash_internal_pointer_reset(Z_ARRVAL_P(data));
 }
@@ -353,13 +343,216 @@ ZEND_METHOD(collection, valid)
 {
 	zval *data;
 
-	data = COLLECTION_GET_PROPERTY("data", sizeof("data") - 1);
+	data = COLLECTION_GET_PROPERTY_DATA();
 	
 	if (zend_hash_get_current_data(Z_ARRVAL_P(data)) == NULL) {
 		RETURN_FALSE;
 	}
 
 	RETURN_TRUE;
+}
+
+ZEND_METHOD(collection, changeKeyCase)
+{
+	zval *array, *entry;
+	zend_string *string_key;
+	zend_string *new_key;
+	zend_ulong num_key;
+	zend_long change_to_upper = 0;
+	zval result;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(change_to_upper)
+	ZEND_PARSE_PARAMETERS_END();
+
+	array = COLLECTION_GET_PROPERTY_DATA();
+
+	array_init_size(&result, zend_hash_num_elements(Z_ARRVAL_P(array)));
+
+	ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(array), num_key, string_key, entry) {
+		if (!string_key) {
+			entry = zend_hash_index_update(Z_ARRVAL(result), num_key, entry);
+		} else {
+			if (change_to_upper) {
+				new_key = php_string_toupper(string_key);
+			} else {
+				new_key = php_string_tolower(string_key);
+			}
+			entry = zend_hash_update(Z_ARRVAL(result), new_key, entry);
+			zend_string_release(new_key);
+		}
+
+		zval_add_ref(entry);
+	} ZEND_HASH_FOREACH_END();
+
+	COLLECTION_RETURN_NEW(&result);
+}
+
+ZEND_METHOD(collection, chunk)
+{
+	int num_in;
+	zend_long size, current = 0;
+	zend_string *str_key;
+	zend_ulong num_key;
+	zend_bool preserve_keys = 0;
+	zval *input = NULL;
+	zval chunk;
+	zval *entry;
+	zval result;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_LONG(size)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(preserve_keys)
+	ZEND_PARSE_PARAMETERS_END();
+
+	input = COLLECTION_GET_PROPERTY_DATA();
+
+	/* Do bounds checking for size parameter. */
+	if (size < 1) {
+		php_error_docref(NULL, E_WARNING, "Size parameter expected to be greater than 0");
+		return;
+	}
+
+	num_in = zend_hash_num_elements(Z_ARRVAL_P(input));
+
+	if (size > num_in) {
+		size = num_in > 0 ? num_in : 1;
+	}
+
+	array_init_size(&result, (uint32_t)(((num_in - 1) / size) + 1));
+
+	ZVAL_UNDEF(&chunk);
+
+	ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(input), num_key, str_key, entry) {
+		/* If new chunk, create and initialize it. */
+		if (Z_TYPE(chunk) == IS_UNDEF) {
+			array_init_size(&chunk, (uint32_t)size);
+		}
+
+		/* Add entry to the chunk, preserving keys if necessary. */
+		if (preserve_keys) {
+			if (str_key) {
+				entry = zend_hash_update(Z_ARRVAL(chunk), str_key, entry);
+			} else {
+				entry = zend_hash_index_update(Z_ARRVAL(chunk), num_key, entry);
+			}
+		} else {
+			entry = zend_hash_next_index_insert(Z_ARRVAL(chunk), entry);
+		}
+		zval_add_ref(entry);
+
+		/* If reached the chunk size, add it to the result array, and reset the
+		 * pointer. */
+		if (!(++current % size)) {
+			add_next_index_zval(&result, &chunk);
+			ZVAL_UNDEF(&chunk);
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	/* Add the final chunk if there is one. */
+	if (Z_TYPE(chunk) != IS_UNDEF) {
+		add_next_index_zval(&result, &chunk);
+	}
+
+	COLLECTION_RETURN_NEW(&result);
+}
+
+ZEND_METHOD(collection, combine)
+{
+	HashTable *values, *keys;
+	uint32_t pos_values = 0;
+	zval *entry_keys, *entry_values;
+	int num_keys, num_values;
+	zval result;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_ARRAY_HT(keys)
+		Z_PARAM_ARRAY_HT(values)
+	ZEND_PARSE_PARAMETERS_END();
+
+	num_keys = zend_hash_num_elements(keys);
+	num_values = zend_hash_num_elements(values);
+
+	if (num_keys != num_values) {
+		php_error_docref(NULL, E_WARNING, "Both parameters should have an equal number of elements");
+		RETURN_FALSE;
+	}
+
+	array_init_size(&result, num_keys);
+
+	if (!num_keys) {
+		return;
+	}
+
+	ZEND_HASH_FOREACH_VAL(keys, entry_keys) {
+		while (1) {
+			if (pos_values >= values->nNumUsed) {
+				break;
+			} else if (Z_TYPE(values->arData[pos_values].val) != IS_UNDEF) {
+				entry_values = &values->arData[pos_values].val;
+				if (Z_TYPE_P(entry_keys) == IS_LONG) {
+					entry_values = zend_hash_index_update(Z_ARRVAL(result),
+						Z_LVAL_P(entry_keys), entry_values);
+				} else {
+					zend_string *key = zval_get_string(entry_keys);
+					entry_values = zend_symtable_update(Z_ARRVAL(result),
+						key, entry_values);
+					zend_string_release(key);
+				}
+				zval_add_ref(entry_values);
+				pos_values++;
+				break;
+			}
+			pos_values++;
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	COLLECTION_RETURN_NEW(result);
+}
+
+ZEND_METHOD(collection, countValues)
+{
+	zval	*input,		/* Input array */
+			*entry,		/* An entry in the input array */
+			*tmp;
+	HashTable *myht;
+	zval result;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ARRAY(input)
+	ZEND_PARSE_PARAMETERS_END();
+
+	/* Initialize return array */
+	array_init(&result);
+
+	/* Go through input array and add values to the return array */
+	myht = Z_ARRVAL_P(input);
+	ZEND_HASH_FOREACH_VAL(myht, entry) {
+		ZVAL_DEREF(entry);
+		if (Z_TYPE_P(entry) == IS_LONG) {
+			if ((tmp = zend_hash_index_find(Z_ARRVAL(result), Z_LVAL_P(entry))) == NULL) {
+				zval data;
+				ZVAL_LONG(&data, 1);
+				zend_hash_index_update(Z_ARRVAL(result), Z_LVAL_P(entry), &data);
+			} else {
+				Z_LVAL_P(tmp)++;
+			}
+		} else if (Z_TYPE_P(entry) == IS_STRING) {
+			if ((tmp = zend_symtable_find(Z_ARRVAL(result), Z_STR_P(entry))) == NULL) {
+				zval data;
+				ZVAL_LONG(&data, 1);
+				zend_symtable_update(Z_ARRVAL(result), Z_STR_P(entry), &data);
+			} else {
+				Z_LVAL_P(tmp)++;
+			}
+		} else {
+			php_error_docref(NULL, E_WARNING, "Can only count STRING and INTEGER values!");
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	COLLECTION_RETURN_NEW(&result);
 }
 
 // 类的方法 数组
@@ -382,6 +575,13 @@ static zend_function_entry collection_method[] = {
 	ZEND_ME(collection, next, 			NULL,   				ZEND_ACC_PUBLIC)
 	ZEND_ME(collection, rewind, 		NULL,   				ZEND_ACC_PUBLIC)
 	ZEND_ME(collection, valid, 			NULL,   				ZEND_ACC_PUBLIC)
+	// PHP Raw Method
+	ZEND_ME(collection, changeKeyCase,  NULL, 					ZEND_ACC_PUBLIC)
+	ZEND_ME(collection, chunk,  		NULL, 					ZEND_ACC_PUBLIC)
+	ZEND_ME(collection, column,  		NULL, 					ZEND_ACC_PUBLIC)
+	ZEND_ME(collection, combine,  		NULL, 					ZEND_ACC_PUBLIC)
+	ZEND_ME(collection, countValues,  	NULL, 					ZEND_ACC_PUBLIC)
+	ZEND_ME(collection, diffAssoc,  	NULL, 					ZEND_ACC_PUBLIC)
 	{ NULL, NULL, NULL }
 };
 
@@ -532,34 +732,34 @@ void group_by_key(HashTable *target, zval *key, HashTable *source)
 
 void group_by_array(HashTable *target, HashTable *keys)
 {
-  zval key;
-  zval *entry;
-  HashTable source;
-  zval *val;
-  zval tmp;
+  // zval key;
+  // zval *entry;
+  // HashTable source;
+  // zval *val;
+  // zval tmp;
 
-  if ((entry = zend_hash_get_current_data(keys)) == NULL) {
-    return;
-  }
+  // if ((entry = zend_hash_get_current_data(keys)) == NULL) {
+  //   return;
+  // }
 
-  group_by_key(&source, entry, target);
+  // group_by_key(&source, entry, target);
 
-  zend_hash_copy(target, &source, NULL);
+  // zend_hash_copy(target, &source, NULL);
 
 
-  zend_hash_get_current_key_zval(keys, &key);
+  // zend_hash_get_current_key_zval(keys, &key);
 
-  if(Z_TYPE(key) == IS_NULL) {
-    return;
-  }
+  // if(Z_TYPE(key) == IS_NULL) {
+  //   return;
+  // }
 
-  zend_symtable_del(keys, zval_get_string(&key));
+  // zend_symtable_del(keys, zval_get_string(&key));
 
-  if(zend_hash_num_elements(keys) == 0) {
-  	return;
-  }
+  // if(zend_hash_num_elements(keys) == 0) {
+  // 	return;
+  // }
 
-  ZEND_HASH_FOREACH_VAL(target, val) {
-    group_by_array(val, keys);
-  } ZEND_HASH_FOREACH_END();
+  // ZEND_HASH_FOREACH_VAL(target, val) {
+  //   group_by_array(val, keys);
+  // } ZEND_HASH_FOREACH_END();
 }
